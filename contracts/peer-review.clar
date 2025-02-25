@@ -1,4 +1,4 @@
-Consensus Protocol
+;; Consensus Protocol
 ;; Description: A smart contract that facilitates expert evaluation of academic manuscripts and compensates evaluators
 
 ;; Constants for error handling
@@ -70,7 +70,7 @@ Consensus Protocol
                 status: "pending",
                 evaluation-count: u0,
                 total-rating: u0,
-                timestamp: stacks-block-height
+                timestamp: block-height
             })
         )
         ;; Additional validations
@@ -125,7 +125,7 @@ Consensus Protocol
             {
                 rating: rating,
                 comment-hash: comment-hash,
-                timestamp: stacks-block-height,
+                timestamp: block-height,
                 status: "submitted"
             }
         )
