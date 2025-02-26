@@ -16,6 +16,9 @@
 (define-constant ERR-EMPTY-STATUS (err u111))
 (define-constant ERR-INVALID-STATUS (err u112))
 (define-constant ERR-ALREADY-REGISTERED (err u113))
+(define-constant ERR-INVALID-COLLATERAL (err u114))
+(define-constant ERR-INVALID-HONORARIUM (err u115))
+(define-constant ERR-INVALID-EVALUATOR (err u116))
 
 ;; Data Variables
 (define-data-var min-collateral uint u100)
@@ -60,6 +63,25 @@
     (is-eq tx-sender (var-get protocol-admin))
 )
 
+;; Validation functions
+(define-private (is-valid-manuscript-id (manuscript-id uint))
+    (and 
+        (>= manuscript-id u0)
+        (is-some (map-get? Manuscripts { manuscript-id: manuscript-id }))
+    )
+)
+
+(define-private (is-valid-new-manuscript-id (manuscript-id uint))
+    (and 
+        (>= manuscript-id u0)
+        (is-none (map-get? Manuscripts { manuscript-id: manuscript-id }))
+    )
+)
+
+(define-private (is-valid-evaluator (evaluator principal))
+    (is-some (map-get? Evaluators { evaluator: evaluator }))
+)
+
 ;; Submit new manuscript
 (define-public (submit-manuscript (ipfs-hash (string-ascii 64)) (manuscript-id uint))
     (let
@@ -74,8 +96,7 @@
             })
         )
         (asserts! (> (len ipfs-hash) u0) ERR-EMPTY-HASH)
-        (asserts! (>= manuscript-id u0) ERR-INVALID-ID)
-        (asserts! (is-none (map-get? Manuscripts { manuscript-id: manuscript-id })) ERR-MANUSCRIPT-EXISTS)
+        (asserts! (is-valid-new-manuscript-id manuscript-id) ERR-MANUSCRIPT-EXISTS)
         
         (ok (map-set Manuscripts { manuscript-id: manuscript-id } manuscript-data))
     )
@@ -115,6 +136,7 @@
         (asserts! (not (is-eq (get scholar manuscript-data) tx-sender)) ERR-NOT-AUTHORIZED)
         (asserts! (is-none (map-get? Evaluations { manuscript-id: manuscript-id, evaluator: tx-sender })) ERR-ALREADY-EVALUATED)
         (asserts! (is-eq (get status evaluator-data) "active") ERR-NOT-AUTHORIZED)
+        (asserts! (is-valid-manuscript-id manuscript-id) ERR-MANUSCRIPT-NOT-FOUND)
         
         (map-set Evaluations 
             { manuscript-id: manuscript-id, evaluator: tx-sender }
@@ -175,6 +197,8 @@
         (asserts! (> (len reason) u0) ERR-EMPTY-REASON)
         (asserts! (not (is-eq evaluator tx-sender)) ERR-SELF-DISPUTE)
         (asserts! (>= (stx-get-balance tx-sender) dispute-stake) ERR-INSUFFICIENT-BALANCE)
+        (asserts! (is-valid-manuscript-id manuscript-id) ERR-MANUSCRIPT-NOT-FOUND)
+        (asserts! (is-valid-evaluator evaluator) ERR-INVALID-EVALUATOR)
         
         (try! (stx-transfer? dispute-stake tx-sender (as-contract tx-sender)))
         
@@ -202,6 +226,7 @@
                      (is-eq new-status "rejected")
                      (is-eq new-status "accepted")) ERR-INVALID-STATUS)
         (asserts! (is-eq tx-sender (get scholar manuscript-data)) ERR-NOT-AUTHORIZED)
+        (asserts! (is-valid-manuscript-id manuscript-id) ERR-MANUSCRIPT-NOT-FOUND)
         
         (ok (map-set Manuscripts
             { manuscript-id: manuscript-id }
@@ -242,6 +267,9 @@
     (new-evaluation-honorarium uint))
     (begin
         (asserts! (is-protocol-admin) ERR-NOT-AUTHORIZED)
+        (asserts! (> new-min-collateral u0) ERR-INVALID-COLLATERAL)
+        (asserts! (> new-evaluation-honorarium u0) ERR-INVALID-HONORARIUM)
+        
         (var-set min-collateral new-min-collateral)
         (var-set evaluation-honorarium new-evaluation-honorarium)
         (ok true)
@@ -253,6 +281,8 @@
         (evaluator-data (unwrap! (map-get? Evaluators { evaluator: evaluator }) ERR-NOT-EVALUATOR))
     )
         (asserts! (is-protocol-admin) ERR-NOT-AUTHORIZED)
+        (asserts! (is-valid-evaluator evaluator) ERR-INVALID-EVALUATOR)
+        
         (ok (map-set Evaluators
             { evaluator: evaluator }
             {
