@@ -18,8 +18,8 @@
 (define-constant ERR-ALREADY-REGISTERED (err u113))
 
 ;; Data Variables
-(define-data-var min-collateral uint u100) ;; Minimum STX required as collateral for evaluators
-(define-data-var evaluation-honorarium uint u50) ;; STX honorarium per evaluation
+(define-data-var min-collateral uint u100)
+(define-data-var evaluation-honorarium uint u50)
 (define-data-var protocol-admin principal tx-sender)
 
 ;; Data Maps
@@ -73,7 +73,6 @@
                 timestamp: block-height
             })
         )
-        ;; Additional validations
         (asserts! (> (len ipfs-hash) u0) ERR-EMPTY-HASH)
         (asserts! (>= manuscript-id u0) ERR-INVALID-ID)
         (asserts! (is-none (map-get? Manuscripts { manuscript-id: manuscript-id })) ERR-MANUSCRIPT-EXISTS)
@@ -94,7 +93,6 @@
                 status: "active"
             })
         )
-        ;; Additional validations
         (asserts! (is-none (map-get? Evaluators { evaluator: tx-sender })) ERR-ALREADY-REGISTERED)
         (asserts! (>= (stx-get-balance tx-sender) collateral-amount) ERR-INSUFFICIENT-BALANCE)
         
@@ -112,14 +110,12 @@
         (manuscript-data (unwrap! (map-get? Manuscripts { manuscript-id: manuscript-id }) ERR-MANUSCRIPT-NOT-FOUND))
         (evaluator-data (unwrap! (map-get? Evaluators { evaluator: tx-sender }) ERR-NOT-EVALUATOR))
     )
-        ;; Additional validations
         (asserts! (> (len comment-hash) u0) ERR-EMPTY-HASH)
         (asserts! (and (>= rating u0) (<= rating u100)) ERR-INVALID-RATING)
         (asserts! (not (is-eq (get scholar manuscript-data) tx-sender)) ERR-NOT-AUTHORIZED)
         (asserts! (is-none (map-get? Evaluations { manuscript-id: manuscript-id, evaluator: tx-sender })) ERR-ALREADY-EVALUATED)
         (asserts! (is-eq (get status evaluator-data) "active") ERR-NOT-AUTHORIZED)
         
-        ;; Set evaluation
         (map-set Evaluations 
             { manuscript-id: manuscript-id, evaluator: tx-sender }
             {
@@ -130,7 +126,6 @@
             }
         )
         
-        ;; Update manuscript data
         (map-set Manuscripts
             { manuscript-id: manuscript-id }
             {
@@ -143,7 +138,6 @@
             }
         )
         
-        ;; Update evaluator stats and send honorarium
         (map-set Evaluators
             { evaluator: tx-sender }
             {
@@ -163,7 +157,6 @@
     (let (
         (evaluator-data (unwrap! (map-get? Evaluators { evaluator: tx-sender }) ERR-NOT-EVALUATOR))
     )
-        ;; Additional validations
         (asserts! (or (is-eq (get status evaluator-data) "paused") 
                      (is-eq (get status evaluator-data) "inactive")) 
                  ERR-NOT-AUTHORIZED)
@@ -179,7 +172,6 @@
         (evaluation-data (unwrap! (map-get? Evaluations { manuscript-id: manuscript-id, evaluator: evaluator }) ERR-MANUSCRIPT-NOT-FOUND))
         (dispute-stake (var-get min-collateral))
     )
-        ;; Additional validations
         (asserts! (> (len reason) u0) ERR-EMPTY-REASON)
         (asserts! (not (is-eq evaluator tx-sender)) ERR-SELF-DISPUTE)
         (asserts! (>= (stx-get-balance tx-sender) dispute-stake) ERR-INSUFFICIENT-BALANCE)
@@ -204,7 +196,6 @@
     (let (
         (manuscript-data (unwrap! (map-get? Manuscripts { manuscript-id: manuscript-id }) ERR-MANUSCRIPT-NOT-FOUND))
     )
-        ;; Additional validations
         (asserts! (> (len new-status) u0) ERR-EMPTY-STATUS)
         (asserts! (or (is-eq new-status "pending") 
                      (is-eq new-status "evaluated")
